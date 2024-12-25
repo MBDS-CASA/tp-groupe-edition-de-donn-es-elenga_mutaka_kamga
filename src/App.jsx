@@ -3,6 +3,8 @@ import './App.css'
 import { use } from 'react'
 import data from './data/data.json'
 import Etudiant from './Component/Etudiant'
+import Matiere from './Component/Matiere'
+import Note from './Component/Note'
 
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination } from '@mui/material';
 
@@ -14,125 +16,6 @@ const MENUS = [
   { title: 'RANDOM STUDENT' }
 ]
 
-function NOTE() {
-  const [studentData, setStudentData] = useState([]);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-
-  useEffect(() => {
-    setStudentData(data);
-  }, []);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  return (
-    <>
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="student grades table">
-          <TableHead>
-            <TableRow>
-              <TableCell>ETUDIANT</TableCell>
-              <TableCell align="center">Cours</TableCell>
-              <TableCell align="right">Note</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {studentData.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((item) => (
-              <TableRow
-                key={item.unique_id}
-                sx={{
-                  '&:last-child td, &:last-child th': { border: 0 },
-                  '&:hover': { backgroundColor: '#f5f5f5' },  // Survol avec une couleur de fond
-                }}
-              >
-                <TableCell>{item.student.firstname} {item.student.lastname}</TableCell>
-                <TableCell align="center">{item.course}</TableCell>
-                <TableCell align="right" className={(item.grade >= 80 ? 'text-black' : 'text-danger')}>{item.grade}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={studentData.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-    </>
-  );
-}
-
-
-
-
-
-function MATIERES() {
-  const [studentData, setStudentData] = useState([]);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
-
-  useEffect(() => {
-    setStudentData(data);
-  }, []);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  return (
-    <>
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="courses table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Cours</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {studentData
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((item) => (
-                <TableRow
-                  key={item.unique_id}
-                  sx={{
-                    '&:last-child td, &:last-child th': { border: 0 },
-                    '&:hover': { backgroundColor: '#f5f5f5' },
-                  }}
-                >
-                  <TableCell>{item.course}</TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={studentData.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-    </>
-  );
-}
 
 function Menu({ title, clickHandle, classname }) {
   return (
@@ -156,12 +39,13 @@ function Header(props) {
   const renderContent = () => {
     switch (selected) {
       case 'NOTE':
-        return <NOTE />;
+        return <Note />;
       case 'ETUDIANTS':
         return <Etudiant />;
       case 'MATIERES':
-        return <MATIERES />;
-
+        return <Matiere />;
+      case 'RANDOM STUDENT':
+        return <Students />;
       default:
         return null;
     }
