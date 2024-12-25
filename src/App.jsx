@@ -30,7 +30,8 @@ function Menu({ title, clickHandle, classname }) {
 
 
 
-function Header(props) {
+function Header() {
+  const [students, setStudents] = useState([]);
   const [selected, setSelected] = useState("");
 
   function onClickMenu(title) {

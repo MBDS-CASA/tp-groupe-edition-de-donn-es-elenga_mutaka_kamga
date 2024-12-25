@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination } from '@mui/material';
 import data from '../data/data.json'
 import { useEffect, useState } from 'react'
+
 const Etudiant = () => {
     const [students, setStudents] = useState([]);
     const [editingStudent, setEditingStudent] = useState(null);
@@ -220,6 +221,7 @@ const Etudiant = () => {
                 </>
             )}
         </div>
+
     );
 };
 export default Etudiant;
