@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { use } from 'react'
 import data from './data/data.json'
+import Etudiant from './Component/Etudiant'
 
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination } from '@mui/material';
 
@@ -73,73 +74,7 @@ function NOTE() {
 }
 
 
-function ETUDIANTS() {
-  const [studentData, setStudentData] = useState([]);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
 
-  useEffect(() => {
-    setStudentData(data);
-  }, []);
-
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  return (
-    <>
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="student table">
-          <TableHead>
-            <TableRow>
-              <TableCell>Id</TableCell>
-              <TableCell>Nom</TableCell>
-              <TableCell>Prénom</TableCell>
-              <TableCell>Cours</TableCell>
-              <TableCell>Note</TableCell>
-              <TableCell>Date</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {studentData
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((item) => (
-                <TableRow
-                  key={item.unique_id}
-                  sx={{
-                    '&:last-child td, &:last-child th': { border: 0 },
-                    '&:hover': { backgroundColor: '#f5f5f5' },
-                  }}
-                >
-                  <TableCell>{item.student.id}</TableCell>
-                  <TableCell>{item.student.lastname}</TableCell>
-                  <TableCell>{item.student.firstname}</TableCell>
-                  <TableCell>{item.course}</TableCell>
-                  <TableCell>{item.grade}</TableCell>
-                  <TableCell>{item.date}</TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={studentData.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-    </>
-  );
-}
 
 
 function MATIERES() {
@@ -224,7 +159,7 @@ function Header(props) {
       case 'NOTE':
         return <NOTE />;
       case 'ETUDIANTS':
-        return <ETUDIANTS />;
+        return <Etudiant />;
       case 'MATIERES':
         return <MATIERES />;
       case 'RANDOM STUDENT':
@@ -466,37 +401,8 @@ function Footer() {
   )
 }
 
-function Ajoutercour() {
-  const [cour, setCour] = useState({
-    name: ""
-  })
-  function onDataChange(event) {
-    setCour({
-      ...cour,
-      [event.target.name]: event.target.value
-    })
-  }
-  function onSubmmit() {
-    console.log(cour.name)
-  }
-
-  return (
-    <>
-      <p>Vous avez rentré {name}</p>
-      <form className='form'>
-        <input type='text' name='cour' placeholder='Entrez un cour' onChange={onDataChange} value={cour.name} />
-        <button className='btn btn-primary' onClick={onSubmmit} type='button'>submit</button>
-      </form>
-    </>
-  )
-
-}
-
 
 function App() {
-
-
-
   return (
     <>
 
