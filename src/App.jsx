@@ -199,6 +199,7 @@ function MATIERES() {
   );
 }
 
+
 function Menu({ title, clickHandle, classname }) {
   return (
     <a className='d-inline p-5 text-white text-decoration-none bg-secondary menu' onClick={clickHandle}>
@@ -502,6 +503,7 @@ function App() {
       <div>
         <Header />
         <MainContent />
+        <Footer />
       </div>
 
     </>
