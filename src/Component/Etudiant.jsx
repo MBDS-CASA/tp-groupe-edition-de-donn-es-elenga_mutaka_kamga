@@ -126,7 +126,7 @@ const Etudiant = () => {
                             onChange={(e) => setSelectedCourse(e.target.value)}
                             required
                         >
-                            <option value="">Sélectionner un cours</option>
+                            <option value={editingStudent ? editingStudent.course : ''}>Sélectionner un cours</option>
                             {courses.map((course, index) => (
                                 <option key={index} value={course}>
                                     {course}
