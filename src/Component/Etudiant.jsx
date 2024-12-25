@@ -259,6 +259,7 @@ const Etudiant = () => {
                 </>
             )}
         </div>
+
     );
 };
 export default Etudiant;
