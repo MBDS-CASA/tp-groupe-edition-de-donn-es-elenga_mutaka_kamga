@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Button, TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import Header from './Header';
 
 function AddMatiere({ addMatiere }) {
   const formRef = useRef(null);
@@ -98,6 +99,7 @@ function Matiere() {
 
   return (
     <>
+       <Header/>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
