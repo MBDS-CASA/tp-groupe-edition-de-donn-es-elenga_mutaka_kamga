@@ -5,6 +5,9 @@ import data from './data/data.json'
 import Etudiant from './Component/Etudiant'
 import Matiere from './Component/Matiere'
 import Note from './Component/Note'
+import AppRoute from './AppRoute'
+import { BrowserRouter } from 'react-router'
+
 
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination } from '@mui/material';
 
@@ -113,12 +116,9 @@ function Footer() {
 function App() {
   return (
     <>
-
-      <div>
-        <Header />
-        <MainContent />
-        <Footer />
-      </div>
+    <browserRouter>
+       <AppRoute />
+    </browserRouter>
 
     </>
   )
