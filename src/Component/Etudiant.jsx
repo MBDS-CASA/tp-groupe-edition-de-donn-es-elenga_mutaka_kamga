@@ -2,6 +2,7 @@ import React, { useRef } from 'react'
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Button } from '@mui/material';
 import data from '../data/data.json'
 import { useEffect, useState } from 'react'
+import Header from './Header';
 
 const Etudiant = () => {
     const [students, setStudents] = useState([]);
@@ -194,6 +195,7 @@ const Etudiant = () => {
 
     return (
         <div className="container py-4">
+            <Header />
             <h2 className="mb-4">{editingStudent ? 'Modifier un Etudiant' : 'Ajouter un Etudiant'}</h2>
             {renderForm()}
 

@@ -4,12 +4,14 @@ import Etudiant from './Etudiant';
 import Matiere from './Matiere';
 import { useState } from 'react';
 import Menu from './Menu';
+import { Link } from 'react-router';
+import { BrowserRouter } from 'react-router';
 
 
 const MENUS = [
-  { title: 'NOTE' },
-  { title: 'ETUDIANTS' },
-  { title: 'MATIERES' },
+  { title: 'NOTE', path: '/note' },
+  { title: 'ETUDIANTS', path: '/students' },
+  { title: 'MATIERES', path: '/cours' },
 ]
 
 
@@ -22,40 +24,33 @@ const Header = () => {
   function onClickMenu(title) {
     setSelected(title);
   }
-  const renderContent = () => {
-    switch (selected) {
-      case 'NOTE':
-        return <Note />;
-      case 'ETUDIANTS':
-        return <Etudiant />;
-      case 'MATIERES':
-        return <Matiere />;
-      default:
-        return null;
-    }
-  };
+
+
+ 
 
   return (
     <header>
       <div className='container md-5'>
-
         <div id='examples'>
           {MENUS.map((menu, index) => (
-            <Menu
-              key={index}
-              title={menu.title}
-              clickHandle={() => onClickMenu(menu.title)}
-              classname={selected == menu.title ? 'active' : null}
-
-            />
+             <Link
+             key={index}
+             to={menu.path}
+             className={`d-inline p-5 text-white text-decoration-none bg-secondary menu ${selected === menu.title ? 'active' : ''}`}
+             onClick={() => onClickMenu(menu.title)}
+           >
+             <span className={selected === menu.title ? 'active' : ''}>
+               {menu.title}
+             </span>
+           </Link>
           ))}
+
+          
 
         </div>
         <img src="images.jpg" alt="React Logo" />
         <h3>Introduction à React</h3>
         <h6>A la découverte des premières notions de React</h6>
-
-        {renderContent()}
 
       </div>
     </header>

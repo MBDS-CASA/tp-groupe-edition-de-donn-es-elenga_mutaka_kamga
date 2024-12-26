@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { useState, useRef, useEffect } from 'react';
 import data from '../data/data.json';
+import Header from './Header';
 
 const Note = () => {
   const [students, setStudents] = useState([]);
@@ -116,6 +117,7 @@ const Note = () => {
 
   return (
     <div className="p-4">
+      <Header />
       <h1 className="text-2xl font-bold mb-4">Gérer les notes</h1>
 
       <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
@@ -230,7 +232,7 @@ const Note = () => {
         />
       )}
     </div>
-  );
+  );  
 };
 
 const EditNote = ({ open, handleClose, note, students, subjectData, handleEdit }) => {
