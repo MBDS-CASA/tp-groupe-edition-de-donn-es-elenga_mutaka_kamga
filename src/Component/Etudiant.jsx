@@ -6,13 +6,28 @@ import Header from './Header';
 
 const Etudiant = () => {
     const [students, setStudents] = useState([]);
+    const [studentsApi, setStudentsApi] = useState([]);
     const [editingStudent, setEditingStudent] = useState(null);
     const formRef = useRef();
     const [selectedCourse, setSelectedCourse] = useState('');
     const [courses, setCourses] = useState([]);
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(5);
-
+    useEffect(() => {
+        fetch("http://localhost:8010/api/students")
+            .then(response => {
+                if (response.ok) {
+                    return response.json()
+                }
+                throw new Error("Erreur de communication")
+            })
+            .then((data) => {
+                setStudentsApi(data)
+            })
+            .catch((err) => {
+                console.log(err);
+            })
+    })
     useEffect(() => {
         setStudents(data);
         const uniqueCourses = [...new Set(data.map(item => item.course))];
@@ -199,12 +214,12 @@ const Etudiant = () => {
             <h2 className="mb-4">{editingStudent ? 'Modifier un Etudiant' : 'Ajouter un Etudiant'}</h2>
             {renderForm()}
 
-            {students.length > 0 && (
+            {studentsApi.length > 0 && (
                 <>
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h2>Liste des Étudiants</h2>
                         <span className="badge bg-primary fs-5">
-                            {students.length} étudiant{students.length > 1 ? 's' : ''}
+                            {studentsApi.length} étudiant{studentsApi.length > 1 ? 's' : ''}
                         </span>
                     </div>
                     <Button variant="contained" color="primary" onClick={downloadCSV}>
@@ -217,19 +232,16 @@ const Etudiant = () => {
                                     <TableCell>ID</TableCell>
                                     <TableCell>First Name</TableCell>
                                     <TableCell>Last Name</TableCell>
-                                    <TableCell>Course</TableCell>
-                                    <TableCell>Date</TableCell>
-                                    <TableCell>Actions</TableCell>
+
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {students.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((student) => (
-                                    <TableRow key={student.unique_id}>
-                                        <TableCell>{student.student.id}</TableCell>
-                                        <TableCell>{student.student.firstname}</TableCell>
-                                        <TableCell>{student.student.lastname}</TableCell>
-                                        <TableCell>{student.course}</TableCell>
-                                        <TableCell>{student.date}</TableCell>
+                                {studentsApi.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((student, index) => (
+                                    <TableRow key={index}>
+
+                                        <TableCell>{student.firstName}</TableCell>
+                                        <TableCell>{student.lastName}</TableCell>
+
                                         <TableCell>
                                             <button
                                                 className="btn btn-warning btn-sm me-2"
@@ -239,7 +251,7 @@ const Etudiant = () => {
                                             </button>
                                             <button
                                                 className="btn btn-danger btn-sm"
-                                                onClick={() => deleteStudent(student.unique_id)}
+                                                onClick={() => deleteStudent(student.id)}
                                             >
                                                 Supprimer
                                             </button>
