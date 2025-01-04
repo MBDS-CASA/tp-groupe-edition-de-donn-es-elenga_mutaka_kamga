@@ -1,263 +1,235 @@
-import React, { useRef } from 'react'
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Button } from '@mui/material';
-import data from '../data/data.json'
-import { useEffect, useState } from 'react'
-import Header from './Header';
+import React, { useState, useEffect } from "react";
+import {
+    Grid,
+    Card,
+    CardContent,
+    Typography,
+    TextField,
+    Button,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
+    TablePagination,
+    IconButton,
+} from "@mui/material";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import Header from "./Header";
 
 const Etudiant = () => {
     const [students, setStudents] = useState([]);
-    const [studentsApi, setStudentsApi] = useState([]);
     const [editingStudent, setEditingStudent] = useState(null);
-    const formRef = useRef();
-    const [selectedCourse, setSelectedCourse] = useState('');
-    const [courses, setCourses] = useState([]);
+    const [formValues, setFormValues] = useState({
+        firstName: "",
+        lastName: "",
+    });
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(5);
+
     useEffect(() => {
-        fetch("http://localhost:8010/api/students")
-            .then(response => {
-                if (response.ok) {
-                    return response.json()
-                }
-                throw new Error("Erreur de communication")
-            })
-            .then((data) => {
-                setStudentsApi(data)
-            })
-            .catch((err) => {
-                console.log(err);
-            })
-    })
-    useEffect(() => {
-        setStudents(data);
-        const uniqueCourses = [...new Set(data.map(item => item.course))];
-        setCourses(uniqueCourses);
+        fetchStudents();
     }, []);
 
     useEffect(() => {
         if (editingStudent) {
-            setSelectedCourse(editingStudent.course);
+            setFormValues({
+                firstName: editingStudent.firstName,
+                lastName: editingStudent.lastName,
+            });
         } else {
-            setSelectedCourse('');
+            setFormValues({
+                firstName: "",
+                lastName: "",
+            });
         }
     }, [editingStudent]);
 
-    function addStudent(data) {
-        const newStudent = {
-            unique_id: students.length + 1,
-            course: data.course,
-            student: {
-                id: data.studentId,
-                firstname: data.firstName,
-                lastname: data.lastName
-            },
-            date: data.date
-        };
-        setStudents(prevStudents => [...prevStudents, newStudent]);
-    }
-
-    function editStudent(updatedData) {
-        setStudents(prevStudents => prevStudents.map(student =>
-            student.unique_id === editingStudent.unique_id ? {
-                ...student,
-                course: updatedData.course,
-                student: {
-                    id: updatedData.studentId,
-                    firstname: updatedData.firstName,
-                    lastname: updatedData.lastName
-                },
-                date: updatedData.date
-            } : student
-        ));
-        setEditingStudent(null);
-        setSelectedCourse('');
-    }
-
-    function deleteStudent(unique_id) {
-        setStudents(prevStudents => prevStudents.filter(student => student.unique_id !== unique_id));
-    }
-
-    function onSubmitData(event) {
-        event.preventDefault();
-        const data = new FormData(formRef.current);
-        const newStudent = {};
-        data.forEach((value, key) => {
-            newStudent[key] = value;
-        });
-
-        if (editingStudent) {
-            editStudent(newStudent);
-        } else {
-            addStudent(newStudent);
+    const fetchStudents = async () => {
+        try {
+            const response = await fetch("http://localhost:8010/api/students");
+            if (!response.ok) throw new Error("Erreur réseau");
+            const data = await response.json();
+            setStudents(data);
+        } catch (error) {
+            console.error("Erreur lors de la récupération des étudiants:", error);
         }
-
-        formRef.current.reset();
-        setSelectedCourse('');
-    }
-
-    function downloadCSV() {
-        const csvRows = [
-            ['ID', 'First Name', 'Last Name', 'Course'],
-            ...students.map(student => [
-                student.student.id,
-                student.student.firstname,
-                student.student.lastname,
-                student.course
-            ])
-        ];
-
-        const csvContent = csvRows.map(e => e.join(",")).join("\n");
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", "students.csv");
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-
-    const handleChangePage = (event, newPage) => {
-        setPage(newPage);
     };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormValues((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        try {
+            if (editingStudent) {
+                const response = await fetch(
+                    `http://localhost:8010/api/students/edit/${editingStudent._id}`,
+                    {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(formValues),
+                    }
+                );
+                if (!response.ok) throw new Error("Erreur lors de la modification");
+
+                const updatedStudent = await response.json();
+                setStudents((prev) =>
+                    prev.map((student) =>
+                        student._id === updatedStudent._id ? updatedStudent : student
+                    )
+                );
+                setEditingStudent(null);
+            } else {
+                const response = await fetch("http://localhost:8010/api/students", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formValues),
+                });
+                if (!response.ok) throw new Error("Erreur lors de l'ajout");
+
+                const newStudent = await response.json();
+                setStudents((prev) => [...prev, newStudent]);
+            }
+            setFormValues({
+                firstName: "",
+                lastName: "",
+            });
+        } catch (error) {
+            console.error("Erreur lors de l'opération:", error);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setEditingStudent(null);
+        setFormValues({
+            firstName: "",
+            lastName: "",
+        });
+    };
+
+    const deleteStudent = async (id) => {
+        try {
+            const response = await fetch(`http://localhost:8010/api/students/${id}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) throw new Error("Erreur lors de la suppression");
+
+            setStudents((prev) => prev.filter((student) => student._id !== id));
+        } catch (error) {
+            console.error("Erreur lors de la suppression:", error);
+        }
+    };
+
+    const handleChangePage = (event, newPage) => setPage(newPage);
 
     const handleChangeRowsPerPage = (event) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
     };
 
-    const renderForm = () => {
-        return (
-            <form ref={formRef} onSubmit={onSubmitData} className="mb-4">
-                <div className="row g-3">
-                    <div className="col-md-6">
-                        <input
-                            className="form-control"
-                            type="text"
-                            name="studentId"
-                            placeholder="ID de l'étudiant"
-                            defaultValue={editingStudent ? editingStudent.student.id : ''}
-                            required
-                        />
-                    </div>
-                    <div className="col-md-6">
-                        <input
-                            className="form-control"
-                            type="text"
-                            name="firstName"
-                            placeholder="Prénom"
-                            defaultValue={editingStudent ? editingStudent.student.firstname : ''}
-                            required
-                        />
-                    </div>
-                    <div className="col-md-6">
-                        <input
-                            className="form-control"
-                            type="text"
-                            name="lastName"
-                            placeholder="Nom"
-                            defaultValue={editingStudent ? editingStudent.student.lastname : ''}
-                            required
-                        />
-                    </div>
-                    <div className="col-md-6">
-                        <select
-                            className="form-select"
-                            name="course"
-                            value={selectedCourse}
-                            onChange={(e) => setSelectedCourse(e.target.value)}
-                            required
-                        >
-                            <option value={editingStudent ? editingStudent.course : ''}>Sélectionner un cours</option>
-                            {courses.map((course, index) => (
-                                <option key={index} value={course}>
-                                    {course}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="col-md-6">
-                        <input
-                            className="form-control"
-                            type="date"
-                            name="date"
-                            defaultValue={editingStudent ? editingStudent.date : ''}
-                            required
-                        />
-                    </div>
-                    <div className="col-12">
-                        <button type="submit" className="btn btn-primary">
-                            {editingStudent ? 'Modifier' : 'Ajouter'}
-                        </button>
-                        {editingStudent && (
-                            <button
-                                type="button"
-                                className="btn btn-secondary ms-2"
-                                onClick={() => {
-                                    setEditingStudent(null);
-                                    setSelectedCourse('');
-                                }}
-                            >
-                                Annuler
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </form>
-        );
-    };
-
     return (
-        <div className="container py-4">
+        <div style={{ padding: "20px" }}>
             <Header />
-            <h2 className="mb-4">{editingStudent ? 'Modifier un Etudiant' : 'Ajouter un Etudiant'}</h2>
-            {renderForm()}
+            <Typography variant="h4" align="center" gutterBottom>
+                Gestion des Étudiants
+            </Typography>
 
-            {studentsApi.length > 0 && (
-                <>
-                    <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h2>Liste des Étudiants</h2>
-                        <span className="badge bg-primary fs-5">
-                            {studentsApi.length} étudiant{studentsApi.length > 1 ? 's' : ''}
-                        </span>
-                    </div>
-                    <Button variant="contained" color="primary" onClick={downloadCSV}>
-                        Télécharger CSV
-                    </Button>
+            <Grid container spacing={3}>
+                {/* Formulaire */}
+                <Grid item xs={12} md={4}>
+                    <Card>
+                        <CardContent>
+                            <Typography variant="h6" gutterBottom>
+                                {editingStudent ? "Modifier un Étudiant" : "Ajouter un Étudiant"}
+                            </Typography>
+                            <form onSubmit={handleSubmit}>
+                                <TextField
+                                    label="Prénom"
+                                    name="firstName"
+                                    value={formValues.firstName}
+                                    onChange={handleInputChange}
+                                    fullWidth
+                                    margin="normal"
+                                    required
+                                />
+                                <TextField
+                                    label="Nom"
+                                    name="lastName"
+                                    value={formValues.lastName}
+                                    onChange={handleInputChange}
+                                    fullWidth
+                                    margin="normal"
+                                    required
+                                />
+                                <Button
+                                    type="submit"
+                                    variant="contained"
+                                    color="primary"
+                                    startIcon={<AddCircleIcon />}
+                                    fullWidth
+                                    style={{ marginTop: "15px" }}
+                                >
+                                    {editingStudent ? "Modifier" : "Ajouter"}
+                                </Button>
+                                {editingStudent && (
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleCancelEdit}
+                                        fullWidth
+                                        style={{ marginTop: "10px" }}
+                                    >
+                                        Annuler
+                                    </Button>
+                                )}
+                            </form>
+                        </CardContent>
+                    </Card>
+                </Grid>
+
+                {/* Tableau */}
+                <Grid item xs={12} md={8}>
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell>ID</TableCell>
-                                    <TableCell>First Name</TableCell>
-                                    <TableCell>Last Name</TableCell>
-
+                                    <TableCell>Prénom</TableCell>
+                                    <TableCell>Nom</TableCell>
+                                    <TableCell align="right">Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {studentsApi.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((student, index) => (
-                                    <TableRow key={index}>
-
-                                        <TableCell>{student.firstName}</TableCell>
-                                        <TableCell>{student.lastName}</TableCell>
-
-                                        <TableCell>
-                                            <button
-                                                className="btn btn-warning btn-sm me-2"
-                                                onClick={() => setEditingStudent(student)}
-                                            >
-                                                Modifier
-                                            </button>
-                                            <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => deleteStudent(student.id)}
-                                            >
-                                                Supprimer
-                                            </button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                                {students
+                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                    .map((student) => (
+                                        <TableRow key={student._id}>
+                                            <TableCell>{student.firstName}</TableCell>
+                                            <TableCell>{student.lastName}</TableCell>
+                                            <TableCell align="right">
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={() => setEditingStudent(student)}
+                                                >
+                                                    <EditIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    color="error"
+                                                    onClick={() => deleteStudent(student._id)}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
                             </TableBody>
                         </Table>
                         <TablePagination
@@ -270,10 +242,10 @@ const Etudiant = () => {
                             onRowsPerPageChange={handleChangeRowsPerPage}
                         />
                     </TableContainer>
-                </>
-            )}
+                </Grid>
+            </Grid>
         </div>
-
     );
 };
+
 export default Etudiant;

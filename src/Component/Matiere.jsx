@@ -1,146 +1,109 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Button, TextField, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
 import Header from './Header';
 
-function AddMatiere({ addMatiere }) {
-  const formRef = useRef(null);
-
-  function Onsubmit() {
-    let formData = new FormData(formRef.current);
-    let newMatiere = Object.fromEntries(formData.entries());
-    addMatiere(newMatiere);
-  }
-
-  return (
-    <div>
-      <h1>Ajouter une matière</h1>
-      <form ref={formRef}>
-        <TextField label="Matière" id="matiere" name="matiere" fullWidth margin="normal" />
-        <Button variant="contained" color="primary" onClick={Onsubmit}>Ajouter</Button>
-      </form>
-    </div>
-  );
-}
-
-function EditMatiere({ open, handleClose, matiere, handleEdit }) {
-  const formRef = useRef(null);
-
-  function Onsubmit() {
-    let formData = new FormData(formRef.current);
-    let updatedMatiere = Object.fromEntries(formData.entries());
-    handleEdit(updatedMatiere);
-  }
-
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>Éditer matière</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          Modifier les informations de la matière.
-        </DialogContentText>
-        <form ref={formRef}>
-          <TextField label="Matière" id="matiere" name="matiere" defaultValue={matiere.matiere} fullWidth margin="normal" />
-        </form>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} color="primary">Annuler</Button>
-        <Button onClick={Onsubmit} color="primary">Enregistrer</Button>
-      </DialogActions>
-    </Dialog>
-  );
-}
-
-function Matiere() {
-  const [matieres, setMatieres] = useState(() => {
-    const savedMatieres = localStorage.getItem('matieres');
-    return savedMatieres ? JSON.parse(savedMatieres) : [];
-  });
+const Matiere = () => {
+  const [matieres, setMatieres] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [editIndex, setEditIndex] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
+  const formRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem('matieres', JSON.stringify(matieres));
-  }, [matieres]);
+    fetchMatieres();
+  }, []);
 
-  const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+  const fetchMatieres = async () => {
+    try {
+      const response = await fetch("http://localhost:8010/api/courses");
+      if (!response.ok) throw new Error('Erreur réseau');
+      const data = await response.json();
+      setMatieres(data);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des matières:", error);
+    }
   };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const formData = new FormData(formRef.current);
+    const matiereData = { name: formData.get('matiere') };
+
+    try {
+      const response = await fetch("http://localhost:8010/api/courses", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(matiereData)
+      });
+      if (!response.ok) throw new Error('Erreur lors de l\'ajout');
+
+      const newMatiere = await response.json();
+      setMatieres(prev => [...prev, newMatiere]);
+      formRef.current.reset();
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de la matière:", error);
+    }
+  };
+
+  const handleChangePage = (event, newPage) => setPage(newPage);
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  const addMatiere = (newMatiere) => {
-    setMatieres([...matieres, newMatiere]);
-  };
-
-  const handleEditOpen = (index) => {
-    setEditIndex(index);
-    setEditOpen(true);
-  };
-
-  const handleEditClose = () => {
-    setEditOpen(false);
-  };
-
-  const editMatiere = (updatedMatiere) => {
-    const updatedMatieres = matieres.map((matiere, i) => (i === editIndex ? updatedMatiere : matiere));
-    setMatieres(updatedMatieres);
-    handleEditClose();
-  };
-
-  const deleteMatiere = (index) => {
-    const updatedMatieres = matieres.filter((_, i) => i !== index);
-    setMatieres(updatedMatieres);
-  };
-
   return (
-    <>
-       <Header/>
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Matière</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {matieres.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((item, index) => (
-              <TableRow key={index}>
-                <TableCell>{item.matiere}</TableCell>
-                <TableCell>
-                  <Button variant="contained" color="secondary" onClick={() => deleteMatiere(index)}>Supprimer</Button>
-                  <Button variant="contained" color="primary" onClick={() => handleEditOpen(index)}>Éditer</Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={matieres.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-      <AddMatiere addMatiere={addMatiere} />
-      {editIndex !== null && (
-        <EditMatiere
-          open={editOpen}
-          handleClose={handleEditClose}
-          matiere={matieres[editIndex]}
-          handleEdit={editMatiere}
-        />
-      )}
-    </>
-  );
-}
+    <div>
+      <Header />
+      <div className="p-4">
+        <form ref={formRef} onSubmit={handleSubmit} className="mb-4">
+          <TextField
+            label="Nom de la matière"
+            name="matiere"
+            fullWidth
+            margin="normal"
+            required
+          />
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            className="mt-3"
+          >
+            Ajouter
+          </Button>
+        </form>
 
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Matière</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {matieres
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((matiere) => (
+                  <TableRow key={matiere._id}>
+                    <TableCell>{matiere.name}</TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={matieres.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </TableContainer>
+      </div>
+    </div>
+  );
+};
 export default Matiere;

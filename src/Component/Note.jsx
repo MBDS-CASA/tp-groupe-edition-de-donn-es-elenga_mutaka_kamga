@@ -1,52 +1,141 @@
-import React from 'react';
-import {
-  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TablePagination, Button, TextField, Dialog, DialogActions, DialogContent,
-  DialogContentText, DialogTitle, MenuItem, Select, InputLabel, FormControl
-} from '@mui/material';
-import { useState, useRef, useEffect } from 'react';
-import data from '../data/data.json';
+import React, { useState, useEffect } from 'react';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Button, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import Header from './Header';
 
 const Note = () => {
-  const [students, setStudents] = useState([]);
-  const [subjectData, setSubjectData] = useState([]);
   const [notes, setNotes] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [matieres, setMatieres] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-  const [editIndex, setEditIndex] = useState(null);
-  const [editOpen, setEditOpen] = useState(false);
-  const formRef = useRef(null);
+  const [editingNote, setEditingNote] = useState(null);
+  const [formValues, setFormValues] = useState({
+    student: '',
+    course: '',
+    grade: ''
+  });
 
-  // Load initial data
   useEffect(() => {
-    // Extract unique students from data.json
-    const uniqueStudents = Array.from(new Set(data.map(item =>
-      JSON.stringify({
-        id: item.student.id,
-        firstname: item.student.firstname,
-        lastname: item.student.lastname
-      })
-    ))).map(str => JSON.parse(str));
-
-    setStudents(uniqueStudents);
-    setSubjectData(loadFromLocalStorage('matieres'));
-    setNotes(loadFromLocalStorage('notes') || data);
+    fetchData();
   }, []);
 
-  // LocalStorage functions
-  const loadFromLocalStorage = (key) => {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
-  };
-
-  const saveToLocalStorage = (key, data) => {
-    localStorage.setItem(key, JSON.stringify(data));
-  };
-
   useEffect(() => {
-    saveToLocalStorage('notes', notes);
-  }, [notes]);
+    // Mettre à jour les valeurs du formulaire quand editingNote change
+    if (editingNote) {
+      setFormValues({
+        student: editingNote.student.id,
+        course: editingNote.course,
+        grade: editingNote.grade
+      });
+    } else {
+      // Réinitialiser le formulaire quand on quitte le mode édition
+      setFormValues({
+        student: '',
+        course: '',
+        grade: ''
+      });
+    }
+  }, [editingNote]);
+
+  const fetchData = async () => {
+    try {
+      // Fetch notes
+      const notesResponse = await fetch("http://localhost:8010/api/notes");
+      const notesData = await notesResponse.json();
+      setNotes(notesData);
+
+      // Fetch students
+      const studentsResponse = await fetch("http://localhost:8010/api/students");
+      const studentsData = await studentsResponse.json();
+      setStudents(studentsData);
+
+      // Fetch courses
+      const matieresResponse = await fetch("http://localhost:8010/api/courses");
+      const matieresData = await matieresResponse.json();
+      setMatieres(matieresData);
+    } catch (error) {
+      console.error("Erreur lors de la récupération des données:", error);
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormValues(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const selectedStudent = students.find(s => s._id === formValues.student);
+
+    const noteData = {
+      student: {
+        id: formValues.student,
+        firstname: selectedStudent.firstName,
+        lastname: selectedStudent.lastName
+      },
+      course: formValues.course,
+      grade: parseInt(formValues.grade)
+    };
+
+    try {
+      if (editingNote) {
+        const response = await fetch(`http://localhost:8010/api/notes/${editingNote._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(noteData)
+        });
+        if (!response.ok) throw new Error('Erreur lors de la modification');
+
+        const updatedNote = await response.json();
+        setNotes(prev => prev.map(note =>
+          note._id === updatedNote._id ? updatedNote : note
+        ));
+        setEditingNote(null);
+      } else {
+        const response = await fetch("http://localhost:8010/api/notes", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(noteData)
+        });
+        if (!response.ok) throw new Error('Erreur lors de l\'ajout');
+
+        const newNote = await response.json();
+        setNotes(prev => [...prev, newNote]);
+      }
+      setFormValues({
+        student: '',
+        course: '',
+        grade: ''
+      });
+    } catch (error) {
+      console.error("Erreur lors de l'opération:", error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNote(null);
+    setFormValues({
+      student: '',
+      course: '',
+      grade: ''
+    });
+  };
+
+  const deleteNote = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:8010/api/notes/${id}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Erreur lors de la suppression');
+
+      setNotes(prev => prev.filter(note => note._id !== id));
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+    }
+  };
 
   const handleChangePage = (event, newPage) => setPage(newPage);
 
@@ -55,253 +144,38 @@ const Note = () => {
     setPage(0);
   };
 
-  const addNote = (newNote) => {
-    setNotes([...notes, {
-      ...newNote,
-      unique_id: Date.now(),
-      date: new Date().toISOString().split('T')[0]
-    }]);
-  };
-
-  const handleEditOpen = (index) => {
-    setEditIndex(index);
-    setEditOpen(true);
-  };
-
-  const handleEditClose = () => {
-    setEditOpen(false);
-  };
-
-  const editNote = (updatedNote) => {
-    const updatedData = notes.map((note, i) =>
-      i === editIndex ? { ...updatedNote, unique_id: notes[i].unique_id } : note
-    );
-    setNotes(updatedData);
-    handleEditClose();
-  };
-
-  const deleteNote = (index) => {
-    const updatedData = notes.filter((_, i) => i !== index);
-    setNotes(updatedData);
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    const formData = new FormData(formRef.current);
-    const studentId = formData.get('student');
-    const selectedStudent = students.find(s => s.id === parseInt(studentId));
-
-    const newNote = {
-      course: formData.get('cours'),
-      student: {
-        id: parseInt(studentId),
-        firstname: selectedStudent.firstname,
-        lastname: selectedStudent.lastname
-      },
-      grade: parseInt(formData.get('grade'))
-    };
-
-    if (!newNote.student.id || !newNote.course || !newNote.grade) {
-      alert('Tous les champs doivent être remplis.');
-      return;
-    }
-
-    if (isNaN(newNote.grade) || newNote.grade < 0 || newNote.grade > 100) {
-      alert('La note doit être un nombre entre 0 et 100.');
-      return;
-    }
-
-    addNote(newNote);
-    formRef.current.reset();
-  };
-
   return (
-    <div className="p-4">
+    <div>
       <Header />
-      <h1 className="text-2xl font-bold mb-4">Gérer les notes</h1>
-
-      <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
-        <FormControl fullWidth>
-          <InputLabel id="student-label">Étudiant</InputLabel>
-          <Select
-            labelId="student-label"
-            id="student"
-            name="student"
-            defaultValue=""
-          >
-            {students.map((student) => (
-              <MenuItem key={student.id} value={student.id}>
-                {`${student.firstname} ${student.lastname}`}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <FormControl fullWidth>
-          <InputLabel id="matiere-label">Matière</InputLabel>
-          <Select
-            labelId="matiere-label"
-            id="cours"
-            name="cours"
-            defaultValue=""
-          >
-            {subjectData.map((subject) => (
-              <MenuItem key={subject.id} value={subject.matiere}>
-                {subject.matiere}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <TextField
-          label="Note"
-          id="grade"
-          name="grade"
-          type="number"
-          inputProps={{ min: 0, max: 100 }}
-          fullWidth
-        />
-
-        <Button type="submit" className="btn btn-primary text-black p-2 rounded">
-          Ajouter
-        </Button>
-      </form>
-
-      <TableContainer component={Paper} className="mt-4">
-        <Table aria-label="student grades table">
-          <TableHead>
-            <TableRow>
-              <TableCell>ETUDIANT</TableCell>
-              <TableCell align="center">Cours</TableCell>
-              <TableCell align="right">Note</TableCell>
-              <TableCell align="right">Date</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {notes
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((item, index) => (
-                <TableRow key={item.unique_id}>
-                  <TableCell>
-                    {`${item.student.firstname} ${item.student.lastname}`}
-                  </TableCell>
-                  <TableCell align="center">{item.course}</TableCell>
-                  <TableCell align="right">{item.grade}</TableCell>
-                  <TableCell align="right">{item.date}</TableCell>
-                  <TableCell align="right">
-                    <div className="space-x-2">
-                      <Button
-                        onClick={() => deleteNote(index)}
-                        className="bg-red-500 text-white p-2 rounded"
-                      >
-                        Supprimer
-                      </Button>
-                      <Button
-                        onClick={() => handleEditOpen(index)}
-                        className="bg-blue-500 text-white p-2 rounded"
-                      >
-                        Éditer
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <TablePagination
-        rowsPerPageOptions={[5, 10, 25]}
-        component="div"
-        count={notes.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-
-      {editIndex !== null && (
-        <EditNote
-          open={editOpen}
-          handleClose={handleEditClose}
-          note={notes[editIndex]}
-          students={students}
-          subjectData={subjectData}
-          handleEdit={editNote}
-        />
-      )}
-    </div>
-  );  
-};
-
-const EditNote = ({ open, handleClose, note, students, subjectData, handleEdit }) => {
-  const formRef = useRef(null);
-
-  const handleSubmit = () => {
-    const formData = new FormData(formRef.current);
-    const studentId = formData.get('student');
-    const selectedStudent = students.find(s => s.id === parseInt(studentId));
-
-    const updatedNote = {
-      course: formData.get('cours'),
-      student: {
-        id: parseInt(studentId),
-        firstname: selectedStudent.firstname,
-        lastname: selectedStudent.lastname
-      },
-      grade: parseInt(formData.get('grade')),
-      date: note.date
-    };
-
-    if (!updatedNote.student.id || !updatedNote.course || !updatedNote.grade) {
-      alert('Tous les champs doivent être remplis.');
-      return;
-    }
-
-    if (isNaN(updatedNote.grade) || updatedNote.grade < 0 || updatedNote.grade > 100) {
-      alert('La note doit être un nombre entre 0 et 100.');
-      return;
-    }
-
-    handleEdit(updatedNote);
-  };
-
-  return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>Éditer note</DialogTitle>
-      <DialogContent>
-        <DialogContentText>
-          Modifier les informations de la note.
-        </DialogContentText>
-        <form ref={formRef} className="space-y-4">
-          <FormControl fullWidth>
-            <InputLabel id="edit-student-label">Étudiant</InputLabel>
+      <div className="p-4">
+        <form onSubmit={handleSubmit} className="mb-4">
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Étudiant</InputLabel>
             <Select
-              labelId="edit-student-label"
-              id="student"
               name="student"
-              defaultValue={note.student.id}
+              value={formValues.student}
+              onChange={handleInputChange}
+              required
             >
               {students.map((student) => (
-                <MenuItem key={student.id} value={student.id}>
-                  {`${student.firstname} ${student.lastname}`}
+                <MenuItem key={student._id} value={student._id}>
+                  {`${student.firstName} ${student.lastName}`}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
 
-          <FormControl fullWidth>
-            <InputLabel id="edit-matiere-label">Matière</InputLabel>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Matière</InputLabel>
             <Select
-              labelId="edit-matiere-label"
-              id="cours"
-              name="cours"
-              defaultValue={note.course}
+              name="course"
+              value={formValues.course}
+              onChange={handleInputChange}
+              required
             >
-              {subjectData.map((subject) => (
-                <MenuItem key={subject.id} value={subject.matiere}>
-                  {subject.matiere}
+              {matieres.map((matiere) => (
+                <MenuItem key={matiere._id} value={matiere.name}>
+                  {matiere.name}
                 </MenuItem>
               ))}
             </Select>
@@ -309,28 +183,93 @@ const EditNote = ({ open, handleClose, note, students, subjectData, handleEdit }
 
           <TextField
             label="Note"
-            id="grade"
             name="grade"
             type="number"
-            defaultValue={note.grade}
+            value={formValues.grade}
+            onChange={handleInputChange}
             inputProps={{ min: 0, max: 100 }}
             fullWidth
+            margin="normal"
+            required
           />
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            className="mt-3"
+          >
+            {editingNote ? 'Modifier' : 'Ajouter'}
+          </Button>
+
+          {editingNote && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={handleCancelEdit}
+                className="ml-2"
+              >
+                Annuler
+              </Button>
+
+            </>
+          )}
         </form>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose} className="text-gray-600">
-          Annuler
-        </Button>
-        <Button onClick={handleSubmit} className="bg-blue-500 text-white">
-          Enregistrer
-        </Button>
-      </DialogActions>
-    </Dialog>
+
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Étudiant</TableCell>
+                <TableCell>Matière</TableCell>
+                <TableCell>Note</TableCell>
+                <TableCell>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {notes
+                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((note) => (
+                  <TableRow key={note._id}>
+                    <TableCell>
+                      {`${note.student.firstname} ${note.student.lastname}`}
+                    </TableCell>
+                    <TableCell>{note.course}</TableCell>
+                    <TableCell>{note.grade}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setEditingNote(note)}
+                        className="mr-2"
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() => deleteNote(note._id)}
+                      >
+                        Supprimer
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+            </TableBody>
+          </Table>
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25]}
+            component="div"
+            count={notes.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
+        </TableContainer>
+      </div>
+    </div>
   );
 };
 
 export default Note;
-
-
-
