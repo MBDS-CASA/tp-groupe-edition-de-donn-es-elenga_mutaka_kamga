@@ -15,6 +15,8 @@ import {
     Paper,
     TablePagination,
     IconButton,
+    Snackbar,
+    Alert,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -22,228 +24,249 @@ import AddCircleIcon from "@mui/icons-material/AddCircle";
 import Header from "./Header";
 
 const Etudiant = () => {
+    // États de base
     const [students, setStudents] = useState([]);
-    const [editingStudent, setEditingStudent] = useState(null);
-    const [formValues, setFormValues] = useState({
-        firstName: "",
-        lastName: "",
-    });
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    // États pour la pagination
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(5);
 
+    // État pour le formulaire
+    const [editingStudent, setEditingStudent] = useState(null);
+    const [formValues, setFormValues] = useState({
+        FirstName: "",
+        LastName: "",
+        age: "",
+        email: "",
+        phone: "",
+        grade_id: "",
+        courses: "",
+    });
+
+    // Chargement initial des données
     useEffect(() => {
         fetchStudents();
     }, []);
 
-    useEffect(() => {
-        if (editingStudent) {
-            setFormValues({
-                firstName: editingStudent.firstName,
-                lastName: editingStudent.lastName,
-            });
-        } else {
-            setFormValues({
-                firstName: "",
-                lastName: "",
-            });
-        }
-    }, [editingStudent]);
-
+    // Fonction pour charger les étudiants
     const fetchStudents = async () => {
         try {
             const response = await fetch("http://localhost:8010/api/students");
-            if (!response.ok) throw new Error("Erreur réseau");
+            if (!response.ok) throw new Error("Erreur de chargement");
             const data = await response.json();
             setStudents(data);
-        } catch (error) {
-            console.error("Erreur lors de la récupération des étudiants:", error);
+        } catch (err) {
+            setError("Erreur lors du chargement des données");
+        } finally {
+            setLoading(false);
         }
     };
 
+    // Gestion des changements dans le formulaire
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormValues((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormValues(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
+    // Soumission du formulaire
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+
         try {
-            if (editingStudent) {
-                const response = await fetch(
-                    `http://localhost:8010/api/students/edit/${editingStudent._id}`,
-                    {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(formValues),
-                    }
-                );
-                if (!response.ok) throw new Error("Erreur lors de la modification");
+            const url = editingStudent 
+                ? `http://localhost:8010/api/students/edit/${editingStudent._id}`
+                : "http://localhost:8010/api/students";
 
-                const updatedStudent = await response.json();
-                setStudents((prev) =>
-                    prev.map((student) =>
-                        student._id === updatedStudent._id ? updatedStudent : student
-                    )
-                );
-                setEditingStudent(null);
-            } else {
-                const response = await fetch("http://localhost:8010/api/students", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formValues),
-                });
-                if (!response.ok) throw new Error("Erreur lors de l'ajout");
-
-                const newStudent = await response.json();
-                setStudents((prev) => [...prev, newStudent]);
-            }
-            setFormValues({
-                firstName: "",
-                lastName: "",
+            const response = await fetch(url, {
+                method: editingStudent ? "PUT" : "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(formValues),
             });
-        } catch (error) {
-            console.error("Erreur lors de l'opération:", error);
+
+            if (!response.ok) throw new Error();
+            
+            await fetchStudents();
+            setFormValues({
+                FirstName: "",
+                LastName: "",
+                age: "",
+                email: "",
+                phone: "",
+                grade_id: "",
+                courses: "",
+            });
+            setEditingStudent(null);
+        } catch (err) {
+            setError("Erreur lors de l'enregistrement");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleCancelEdit = () => {
-        setEditingStudent(null);
-        setFormValues({
-            firstName: "",
-            lastName: "",
-        });
-    };
-
-    const deleteStudent = async (id) => {
+    // Suppression d'un étudiant
+    const handleDelete = async (id) => {
+        if (!window.confirm("Êtes-vous sûr de vouloir supprimer ?")) return;
+        
+        setLoading(true);
         try {
             const response = await fetch(`http://localhost:8010/api/students/${id}`, {
                 method: "DELETE",
             });
-            if (!response.ok) throw new Error("Erreur lors de la suppression");
-
-            setStudents((prev) => prev.filter((student) => student._id !== id));
-        } catch (error) {
-            console.error("Erreur lors de la suppression:", error);
+            if (!response.ok) throw new Error();
+            await fetchStudents();
+        } catch (err) {
+            setError("Erreur lors de la suppression");
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleChangePage = (event, newPage) => setPage(newPage);
+    // Si chargement initial
+    if (loading && students.length === 0) {
+        return <div>Chargement...</div>;
+    }
 
-    const handleChangeRowsPerPage = (event) => {
-        setRowsPerPage(parseInt(event.target.value, 10));
-        setPage(0);
-    };
+    // Si erreur fatale
+    if (error && students.length === 0) {
+        return <div>Erreur: {error}</div>;
+    }
 
     return (
         <div style={{ padding: "20px" }}>
             <Header />
-            <Typography variant="h4" align="center" gutterBottom>
-                Gestion des Étudiants
-            </Typography>
-
-            <Grid container spacing={3}>
-                {/* Formulaire */}
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                                {editingStudent ? "Modifier un Étudiant" : "Ajouter un Étudiant"}
-                            </Typography>
-                            <form onSubmit={handleSubmit}>
+            
+            {/* Formulaire */}
+            <Card style={{ marginBottom: "20px" }}>
+                <CardContent>
+                    <form onSubmit={handleSubmit}>
+                        <Grid container spacing={2}>
+                            <Grid item xs={12} sm={6}>
                                 <TextField
+                                    fullWidth
                                     label="Prénom"
-                                    name="firstName"
-                                    value={formValues.firstName}
+                                    name="FirstName"
+                                    value={formValues.FirstName}
                                     onChange={handleInputChange}
-                                    fullWidth
-                                    margin="normal"
-                                    required
                                 />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
                                 <TextField
-                                    label="Nom"
-                                    name="lastName"
-                                    value={formValues.lastName}
-                                    onChange={handleInputChange}
                                     fullWidth
-                                    margin="normal"
-                                    required
+                                    label="Nom"
+                                    name="LastName"
+                                    value={formValues.LastName}
+                                    onChange={handleInputChange}
                                 />
-                                <Button
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Age"
+                                    name="age"
+                                    type="number"
+                                    value={formValues.age}
+                                    onChange={handleInputChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                                <TextField
+                                    fullWidth
+                                    label="Email"
+                                    name="email"
+                                    value={formValues.email}
+                                    onChange={handleInputChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12}>
+                                <Button 
                                     type="submit"
                                     variant="contained"
                                     color="primary"
-                                    startIcon={<AddCircleIcon />}
-                                    fullWidth
-                                    style={{ marginTop: "15px" }}
+                                    disabled={loading}
                                 >
                                     {editingStudent ? "Modifier" : "Ajouter"}
                                 </Button>
                                 {editingStudent && (
                                     <Button
-                                        variant="outlined"
-                                        onClick={handleCancelEdit}
-                                        fullWidth
-                                        style={{ marginTop: "10px" }}
+                                        onClick={() => setEditingStudent(null)}
+                                        style={{ marginLeft: "10px" }}
                                     >
                                         Annuler
                                     </Button>
                                 )}
-                            </form>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            </Grid>
+                        </Grid>
+                    </form>
+                </CardContent>
+            </Card>
 
-                {/* Tableau */}
-                <Grid item xs={12} md={8}>
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Prénom</TableCell>
-                                    <TableCell>Nom</TableCell>
-                                    <TableCell align="right">Actions</TableCell>
+            {/* Tableau */}
+            <TableContainer component={Paper}>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>Prénom</TableCell>
+                            <TableCell>Nom</TableCell>
+                            <TableCell>Age</TableCell>
+                            <TableCell>Email</TableCell>
+                            <TableCell>Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {students
+                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                            .map((student) => (
+                                <TableRow key={student._id}>
+                                    <TableCell>{student.FirstName}</TableCell>
+                                    <TableCell>{student.LastName}</TableCell>
+                                    <TableCell>{student.age}</TableCell>
+                                    <TableCell>{student.email}</TableCell>
+                                    <TableCell>
+                                        <IconButton 
+                                            onClick={() => setEditingStudent(student)}
+                                            disabled={loading}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                        <IconButton 
+                                            onClick={() => handleDelete(student._id)}
+                                            disabled={loading}
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {students
-                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                    .map((student) => (
-                                        <TableRow key={student._id}>
-                                            <TableCell>{student.firstName}</TableCell>
-                                            <TableCell>{student.lastName}</TableCell>
-                                            <TableCell align="right">
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() => setEditingStudent(student)}
-                                                >
-                                                    <EditIcon />
-                                                </IconButton>
-                                                <IconButton
-                                                    color="error"
-                                                    onClick={() => deleteStudent(student._id)}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                            </TableBody>
-                        </Table>
-                        <TablePagination
-                            rowsPerPageOptions={[5, 10, 25]}
-                            component="div"
-                            count={students.length}
-                            rowsPerPage={rowsPerPage}
-                            page={page}
-                            onPageChange={handleChangePage}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
-                        />
-                    </TableContainer>
-                </Grid>
-            </Grid>
+                            ))}
+                    </TableBody>
+                </Table>
+                <TablePagination
+                    component="div"
+                    count={students.length}
+                    page={page}
+                    onPageChange={(e, newPage) => setPage(newPage)}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={(e) => {
+                        setRowsPerPage(parseInt(e.target.value, 10));
+                        setPage(0);
+                    }}
+                />
+            </TableContainer>
+
+            {/* Notification d'erreur */}
+            {error && (
+                <Snackbar 
+                    open={!!error} 
+                    autoHideDuration={6000} 
+                    onClose={() => setError(null)}
+                >
+                    <Alert severity="error" onClose={() => setError(null)}>
+                        {error}
+                    </Alert>
+                </Snackbar>
+            )}
         </div>
     );
 };
